@@ -2,7 +2,7 @@
 
 set +u
 
-curl -o cicd -X GET https://raw.githubusercontent.com/jasperjun/cli/master/cicd.sh
+curl -o cicd -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/cicd.sh
 
 chmod +x cicd
 
