@@ -1,0 +1,114 @@
+pipeline {
+
+    environment {
+        SITE = "${params.site}"
+        PROFILE = "${SITE}_docker"
+        SKIP_TEST = "false"
+    }
+
+    parameters {
+        choice(name: 'site', choices: ['okex', 'com', 'kr', 'jp'], description: 'site <okex|com|kr|jp...> ?')
+    }
+
+     agent { label "jnlp" }
+
+
+    stages {
+
+        ////////// Step 1 //////////
+        stage('Prepare') {
+            steps {
+                script {
+                    GIT_BRANCH_NAME = GIT_BRANCH.replaceAll('origin/', '').replaceAll('/', '-').replaceAll('\\*', '-')
+                    echo "git branch name set to ${GIT_BRANCH_NAME}"
+
+                    GIT_TAG = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
+                    echo "Global TAG set to ${GIT_TAG}"
+
+                    sh "printenv"
+                }
+
+            }
+        }
+
+        ////////// Step 2 //////////
+        stage("Build") {
+            steps {
+                withMaven() {
+                    echo "Maven Build... Profile is ${PROFILE}"
+                    sh "mvn clean install -P${PROFILE}"
+
+                    echo "Docker Image Build..."
+                    dir('okcoin-users-rest') {
+                        sh "mvn dockerfile:build -Ddocker.image.tag=${GIT_TAG}"
+                    }
+                    dir('okcoin-users-scheduler') {
+                        sh "mvn dockerfile:build -Ddocker.image.tag=${GIT_TAG}"
+                    }
+                }
+            }
+        }
+
+
+        ////////// Step 3 //////////
+        stage("Tests") {
+            when {
+                environment name: 'SKIP_TEST', value: 'false'
+            }
+            steps {
+                withMaven() {
+                    sh "mvn test"
+                }
+            }
+        }
+
+        ////////// Step 4 //////////
+        stage("Push") {
+            steps {
+                withMaven() {
+                    echo "push to maven repository..."
+                    sh "mvn deploy"
+
+                    echo "push to docker repository ..."
+                    dir('okcoin-users-rest') {
+                        sh "mvn dockerfile:push -Ddocker.image.tag=${GIT_TAG}"
+                    }
+                    dir('okcoin-users-scheduler') {
+                        sh "mvn dockerfile:push -Ddocker.image.tag=${GIT_TAG}"
+                    }
+                }
+            }
+        }
+
+        ////////// Step 5 //////////
+        stage("Deploy to dev") {
+            steps {
+                script {
+                    // helm init
+                    sh "helm init --client-only -c --skip-refresh"
+
+                    // Kubernetes 集群命名空间
+                    namespace = "dev"
+
+                    module="okcoin-users-rest"
+                    addHelm(module, namespace)
+
+                    module = "okcoin-users-scheduler"
+                    addHelm(module, namespace)
+
+                }
+            }
+        }
+    }
+
+}
+
+def addHelm(module, namespace) {
+    releaseName = "${module}-${GIT_BRANCH_NAME}"
+    dir ("charts/${module}") {
+        sh "helm upgrade -f values.yaml -f values/${SITE}/${namespace}.yaml " +
+            " -i ${releaseName} ./ " +
+            " --set image.tag=${GIT_TAG},spring.profiles.active=${PROFILE} "+
+            " --namespace=${namespace}"
+    }
+}

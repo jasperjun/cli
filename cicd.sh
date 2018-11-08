@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 
@@ -15,6 +14,10 @@ processOptions () {
             welcome)
                 shift
                 cmd="wel"
+                ;;
+            createApp)
+                shift
+                cmd="createApp"
                 ;;
             token)
                 shift
@@ -86,6 +89,9 @@ main () {
     case $cmd in
         wel)
             __welcome
+            ;;
+        createApp)
+            createApp
             ;;
         token)
             token
@@ -314,8 +320,51 @@ token () {
     fi
     echo "generate token ..."
     token=`curl -I -s -X POST $url/job/demo/descriptorByName/com.dabsquared.gitlabjenkins.GitLabPushTrigger/generateSecretToken --user $user | grep script | cut -d '=' -f 2 | sed "s/'//g"`
-
     echo $token
+}
+
+createApp () {
+    input "input git url:" git_url
+    input "input git branch:" git_branch
+
+    mkdir -p ./charts
+    mkdir -p ./jobs
+
+    curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/job-config.xml > job-config.xml
+
+    token
+    echo $git_url
+    echo $git_branch
+
+    sedJob
+
+    curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/Jenkinsfile.sample > Jenkinsfile.sample
+
+    bingo
+}
+
+sedJob () {
+    sed "/s/\$\{SECRET_TOKEN}/$token/g" ./job-config.xml
+    sed "/s/\$\{GIT_URL}/$git_url/g" ./job-config.xml
+    sed "/s/\$\{GIT_BRANCH}/$git_branch/g" ./job-config.xml
+}
+
+input () {
+    read -p "$1" "$2"
+}
+
+createChart () {
+    if !(type helm > /dev/null 2>&1); then
+        __error "helm not install."
+        exit 1
+    fi
+    inputName
+    helm create ./charts/
+    bingo
+}
+
+bingo(){
+    echo "Bingo!!! ^_^"
 }
 
 __debug(){
@@ -331,7 +380,7 @@ __error(){
 }
 
 __welcome() {
-    echo "success install"
+    echo "Run 'cicd init' to configure cicd cli"
     echo "Happy cicd! ^_^"
 }
 
