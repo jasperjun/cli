@@ -155,7 +155,7 @@ init() {
     __info "init jenkins config ..."
 
     if [ ! -f ~/.jenkins ]; then
-        touch ~/.jenkins
+        mv ~/.jenkins
     fi
     if [ "$user" == "" ]; then
         read -p "input username and password <username:password>:" user
