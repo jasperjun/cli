@@ -12,6 +12,9 @@ processOptions () {
 
     for arg in "$@"; do
         case $arg in
+            welcome)
+                shift
+                cmd="wel"
             token)
                 shift
                 cmd="token"
@@ -80,6 +83,9 @@ main () {
     fi
 
     case $cmd in
+        wel)
+            __welcome
+            ;;
         token)
             token
             ;;
@@ -116,7 +122,7 @@ echo "
         cicd [command] <args>
     eg:
         1. first init jenkins conf
-        cicd init --url http://jenkins.docker.okcoin-inc.com --user cicd-dev:cicd-dev
+        cicd init --url http://jenkins.docker.okcoin-inc.com --user dev:dev
 
         2. generate gitlab hook secret token
         cicd token
@@ -323,6 +329,10 @@ __error(){
     echo "[ERROR] $@"
 }
 
+__welcome() {
+    echo "success install"
+    echo "Happy cicd! ^_^"
+}
 
 echo "        _               _"
 echo "       (_)             | |"
