@@ -12,6 +12,9 @@ processOptions () {
 
     for arg in "$@"; do
         case $arg in
+            welcome)
+                shift
+                cmd="wel"
             token)
                 shift
                 cmd="token"
@@ -80,6 +83,9 @@ main () {
     fi
 
     case $cmd in
+        wel)
+            __welcome
+            ;;
         token)
             token
             ;;
@@ -323,6 +329,10 @@ __error(){
     echo "[ERROR] $@"
 }
 
+__welcome() {
+    echo "success install"
+    echo "Happy cicd! ^_^"
+}
 
 echo "        _               _"
 echo "       (_)             | |"
