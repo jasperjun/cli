@@ -15,6 +15,10 @@ processOptions () {
                 shift
                 cmd="wel"
                 ;;
+            createChart)
+                shift
+                cmd="createChart"
+                ;;
             createApp)
                 shift
                 cmd="createApp"
@@ -93,8 +97,12 @@ main () {
         createApp)
             createApp
             ;;
+        createChart)
+            createChart
+            ;;
         token)
             token
+            echo $token
             ;;
         apply)
             apply
@@ -131,22 +139,27 @@ echo "
         1. first init jenkins conf
         cicd init --url http://jenkins.docker.okcoin-inc.com --user dev:dev
 
-        2. generate gitlab hook secret token
-        cicd token
+        2. create App
+        cicd createApp
 
-        3. add|update job
+        3. create Chart
+        cicd createChart
+
+        4. add|update job
         cicd apply --name okcoin-users-job
 
-        4. build job
+        5. build job
         cicd build --name okcoin-users-job
 
     Available Commands:
-        init      initilize jenkins config information.
-        token     generate gitlab webhook secret token
-        apply     add|update cicd job.
-        del       delete cicd job.
-        build     trigger cicd job build.
-        config    list jenkins config information.
+        init        initilize jenkins config information.
+        token       generate gitlab webhook secret token.
+        createApp   generate project ci/cd file template.
+        createChart generate helm chart.
+        apply       add|update cicd job.
+        del         delete cicd job.
+        build       trigger cicd job build.
+        config      list jenkins config information.
 
     Available Arguments:
         --url     init jenkins url
@@ -320,33 +333,45 @@ token () {
     fi
     echo "generate token ..."
     token=`curl -I -s -X POST $url/job/demo/descriptorByName/com.dabsquared.gitlabjenkins.GitLabPushTrigger/generateSecretToken --user $user | grep script | cut -d '=' -f 2 | sed "s/'//g"`
-    echo $token
+    token=${token//\n//\\}
+    len=${#token}
+    token=${token:0:$len}
 }
 
 createApp () {
     input "input git url:" git_url
-    input "input git branch:" git_branch
+    git_branch=`git symbolic-ref --short -q HEAD`
+    if [ "$git_branch" != "" ]; then
+        input "use current branch $git_branch [y/n]" ret
+        if [[ "$ret" == "n" || "$ret" == "N" ]]; then
+            git_branch=""
+        fi
+    fi
+    if [ "$git_branch" == "" ]; then
+        input "input git branch:" git_branch
+    fi
 
     mkdir -p ./charts
     mkdir -p ./jobs
 
-    curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/job-config.xml > job-config.xml
+    curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/job-config.xml > ./job-config.xml
 
     token
-    echo $git_url
-    echo $git_branch
 
     sedJob
 
-    curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/Jenkinsfile.sample > Jenkinsfile.sample
+    curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/Jenkinsfile.sample > ./Jenkinsfile.sample
+
+    echo "GitLab Integrations Trigger hook by the following Secret Token:"
+    echo $token
 
     bingo
 }
 
 sedJob () {
-    sed "/s/\$\{SECRET_TOKEN}/$token/g" ./job-config.xml
-    sed "/s/\$\{GIT_URL}/$git_url/g" ./job-config.xml
-    sed "/s/\$\{GIT_BRANCH}/$git_branch/g" ./job-config.xml
+    sed -i '' -e "s/\${SECRET_TOKEN}/${token}/g"  job-config.xml
+    sed -i ''  -e "s/\${GIT_URL}/${git_url//\//\\/}/g"  job-config.xml
+    sed -i ''  -e "s/\${GIT_BRANCH}/$git_branch/g" job-config.xml
 }
 
 input () {
@@ -358,8 +383,9 @@ createChart () {
         __error "helm not install."
         exit 1
     fi
-    inputName
-    helm create ./charts/
+    input 'input chart name:' chartname
+    helm create ./charts/$chartname
+
     bingo
 }
 
