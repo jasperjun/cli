@@ -8,4 +8,4 @@ chmod +x cicd
 
 mv cicd /usr/local/bin
 
-cicd
+cicd welcome
