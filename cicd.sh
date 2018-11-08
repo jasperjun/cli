@@ -154,18 +154,18 @@ echo "
 init() {
     __info "init jenkins config ..."
 
-    if [ ! -f .jenkins ]; then
-        touch .jenkins
+    if [ ! -f ~/.jenkins ]; then
+        touch ~/.jenkins
     fi
     if [ "$user" == "" ]; then
         read -p "input username and password <username:password>:" user
     fi
     if [ "$url" == "" ]; then
-        read -p "input jenkins web url:" url
+        read -p "input jenkins host url:" url
     fi
-    echo > .jenkins
-    echo "url=$url" >> .jenkins
-    echo "user=$user" >> .jenkins
+    echo > ~/.jenkins
+    echo "url=$url" >> ~/.jenkins
+    echo "user=$user" >> ~/.jenkins
     readConf
 }
 
@@ -174,12 +174,12 @@ config() {
 }
 
 readConf() {
-    if [ ! -f .jenkins ]; then
+    if [ ! -f ~/.jenkins ]; then
         __info "init command first."
         exit 1
     fi
 
-    for line in `cat .jenkins`
+    for line in `cat ~/.jenkins`
     do
         if [[ "$line" =~ "url=" && "$url" == "" ]]; then
             url=${line:4}
@@ -190,7 +190,7 @@ readConf() {
     done
 
     if $debug ;then
-        echo "read .jenkins:"
+        echo "read ~/.jenkins:"
         echo "url=${url}"
         echo "user=${user}"
     fi
