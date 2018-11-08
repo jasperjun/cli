@@ -15,6 +15,7 @@ processOptions () {
             welcome)
                 shift
                 cmd="wel"
+                ;;
             token)
                 shift
                 cmd="token"
