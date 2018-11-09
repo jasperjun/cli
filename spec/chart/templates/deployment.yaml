@@ -1,6 +1,6 @@
 {{- $fullName := include "${CHART_NAME}.fullname" . -}}
 {{- $name := include "${CHART_NAME}.name" . -}}
-{{- $chart := include "$CHART_NAME}.chart" . -}}
+{{- $chart := include "${CHART_NAME}.chart" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
