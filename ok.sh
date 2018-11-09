@@ -19,9 +19,9 @@ processOptions () {
                 shift
                 cmd="createChart"
                 ;;
-            createApp)
+            createJob)
                 shift
-                cmd="createApp"
+                cmd="createJob"
                 ;;
             token)
                 shift
@@ -94,8 +94,8 @@ main () {
         wel)
             __welcome
             ;;
-        createApp)
-            createApp
+        createJob)
+            createJob
             ;;
         createChart)
             createChart
@@ -134,31 +134,34 @@ main () {
 usage() {
 echo "
     Usage:
-        cicd [command] <args>
+        ok [command] <args>
     eg:
         1. first init jenkins conf
-        cicd init --url http://jenkins.docker.okcoin-inc.com --user dev:dev
+        ok init --url http://jenkins.docker.okcoin-inc.com --user dev:dev
 
-        2. create App
-        cicd createApp
+        2. create helm chart template for Kubernetes
+        ok createChart --name okcoin-users-rest
 
-        3. create Chart
-        cicd createChart
+        3. create pipeline jenkinsfile template for CI/CD
+        ok createJob
 
-        4. add|update job
-        cicd apply --name okcoin-users-job
+        4. publish pipeline job to Jenkins
+        ok apply --name job-okcoin-users
 
-        5. build job
-        cicd build --name okcoin-users-job
+        6. build pipeline job by manual
+        ok build --name job-okcoin-users
+
+        7. delete pipeline job
+        ok del --name job-okcoin-users
 
     Available Commands:
         init        initilize jenkins config information.
         token       generate gitlab webhook secret token.
-        createApp   generate project ci/cd file template.
-        createChart generate helm chart.
-        apply       add|update cicd job.
-        del         delete cicd job.
-        build       trigger cicd job build.
+        createJob   create pipeline jenkinsfile template for CI/CD.
+        createChart create helm chart template for Kubernetes.
+        apply       publish pipeline job to Jenkins
+        del         delete pipeline job.
+        build       build pipeline job by manual.
         config      list jenkins config information.
 
     Available Arguments:
@@ -338,34 +341,34 @@ token () {
     token=${token:0:$len}
 }
 
-createApp () {
-    input "input git url:" git_url
+createJob () {
+
+    input "Input Project GitLab URL:" git_url
+
     git_branch=`git symbolic-ref --short -q HEAD`
     if [ "$git_branch" != "" ]; then
-        input "use current branch $git_branch [y/n]" ret
+        input "Use Current Branch $git_branch [y/n]" ret
         if [[ "$ret" == "n" || "$ret" == "N" ]]; then
             git_branch=""
         fi
     fi
     if [ "$git_branch" == "" ]; then
-        input "input git branch:" git_branch
+        input "Input Project GitLab Branch:" git_branch
     fi
 
-    mkdir -p ./charts
-    mkdir -p ./jobs
-
     curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/job-config.xml > ./job-config.xml
-
     token
-
     sedJob
 
     curl -s -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/Jenkinsfile.sample > ./Jenkinsfile.sample
-
-    echo "GitLab Integrations Trigger hook by the following Secret Token:"
+    echo "GitLab integrations hook by the following Secret Token:"
     echo $token
 
     bingo
+}
+
+input () {
+    read -p "$1" "$2"
 }
 
 sedJob () {
@@ -374,8 +377,17 @@ sedJob () {
     sed -i ''  -e "s/\${GIT_BRANCH}/$git_branch/g" job-config.xml
 }
 
-input () {
-    read -p "$1" "$2"
+sedChart () {
+    for file in `ls $1`
+    do
+        if [ -d $1"/"$file ]
+        then
+            sedChart $1"/"$file
+        else
+            __debug "sed $1/$file"
+            sed -i '' -e "s/\${CHART_NAME}/${chartname}/g" $1/$file
+        fi
+    done
 }
 
 createChart () {
@@ -383,8 +395,33 @@ createChart () {
         __error "helm not install."
         exit 1
     fi
-    input 'input chart name:' chartname
-    helm create ./charts/$chartname
+    chartname=$name
+    if [ "$chartname" == "" ]; then
+        input 'Input Chart Name:' chartname
+    fi
+
+    mkdir -p ./_chart
+
+    curl -X GET https://raw.githubusercontent.com/jasperjun/cli/master/spec/chart.tar.gz > ./_chart/chart.tar.gz
+
+    if [ ! -f ./_chart/chart.tar.gz ]; then
+        __error "Can not download chart template gz."
+        exit 1
+    fi
+
+    cd ./_chart
+
+    tar -xf ./chart.tar.gz
+
+    cd ..
+
+    mkdir -p "./charts/$chartname"
+
+    cp -r ./_chart/chart/* "charts/$chartname"
+
+    rm -rf ./_chart
+
+    sedChart ./charts/$chartname
 
     bingo
 }
@@ -394,7 +431,9 @@ bingo(){
 }
 
 __debug(){
-    echo "[DEBUG] $@"
+    if $debug; then
+        echo "[DEBUG] $@"
+    fi
 }
 
 __info(){
