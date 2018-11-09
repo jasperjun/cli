@@ -1,0 +1,8 @@
+{{- if .Values.configmap.enabled -}}
+{{- $fullName := include "${CHART_NAME}.fullname" . -}}
+apiVersion: v1
+kind: ConfigMap
+data:
+  {{ include .Values.configmap.data | indent 2 }}
+metadata:
+  name: {{ $fullName }}-configmap

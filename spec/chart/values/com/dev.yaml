@@ -1,0 +1,25 @@
+
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+  - svc.docker.okcoin.com
+  http:
+    paths:
+    - backend:
+        serviceName: ${CHART_NAME}
+        servicePort: {{ .Values.service.port }}
+      path: /${CHART_NAME}
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: dev
+
+resources:
+  limits:
+    cpu: 2
+    memory: 4Gi
+  requests:
+    cpu: 2
+    memory: 4Gi

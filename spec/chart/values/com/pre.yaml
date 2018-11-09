@@ -1,0 +1,12 @@
+
+env:
+  - name: SPRING_PROFILES_ACTIVE
+    value: pre
+
+resources:
+  limits:
+    cpu: 16
+    memory: 32Gi
+  requests:
+    cpu: 8
+    memory: 16Gi
