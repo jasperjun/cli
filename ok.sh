@@ -445,8 +445,8 @@ __error(){
 }
 
 __welcome() {
-    echo "Run 'cicd init' to configure cicd cli"
-    echo "Happy cicd! ^_^"
+    echo "Run 'ok init' to configure cli"
+    echo "Have Fun! ^_^"
 }
 
 echo "       _               _       "
